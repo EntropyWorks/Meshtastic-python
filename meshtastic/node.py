@@ -92,91 +92,130 @@ class Node:
             p.set_config.device.CopyFrom(self.localConfig.device)
             self._sendAdmin(p)
             logging.debug("Wrote device")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.localConfig.position:
             p = admin_pb2.AdminMessage()
             p.set_config.position.CopyFrom(self.localConfig.position)
             self._sendAdmin(p)
             logging.debug("Wrote position")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.localConfig.power:
             p = admin_pb2.AdminMessage()
             p.set_config.power.CopyFrom(self.localConfig.power)
             self._sendAdmin(p)
             logging.debug("Wrote power")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.localConfig.wifi:
             p = admin_pb2.AdminMessage()
             p.set_config.wifi.CopyFrom(self.localConfig.wifi)
             self._sendAdmin(p)
             logging.debug("Wrote wifi")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.localConfig.display:
             p = admin_pb2.AdminMessage()
             p.set_config.display.CopyFrom(self.localConfig.display)
             self._sendAdmin(p)
             logging.debug("Wrote display")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.localConfig.lora:
             p = admin_pb2.AdminMessage()
             p.set_config.lora.CopyFrom(self.localConfig.lora)
             self._sendAdmin(p)
             logging.debug("Wrote lora")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.moduleConfig.mqtt:
             p = admin_pb2.AdminMessage()
             p.set_module_config.mqtt.CopyFrom(self.moduleConfig.mqtt)
             self._sendAdmin(p)
             logging.debug("Wrote module: mqtt")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.moduleConfig.serial:
             p = admin_pb2.AdminMessage()
             p.set_module_config.serial.CopyFrom(self.moduleConfig.serial)
             self._sendAdmin(p)
             logging.debug("Wrote module: serial")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.moduleConfig.external_notification:
             p = admin_pb2.AdminMessage()
             p.set_module_config.external_notification.CopyFrom(self.moduleConfig.external_notification)
             self._sendAdmin(p)
             logging.debug("Wrote module: external_notification")
-            time.sleep(0.1)
+            time.sleep(0.3)
         
         if self.moduleConfig.store_forward:
             p = admin_pb2.AdminMessage()
             p.set_module_config.store_forward.CopyFrom(self.moduleConfig.store_forward)
             self._sendAdmin(p)
             logging.debug("Wrote module: store_forward")
-            time.sleep(0.1)
+            time.sleep(0.3)
         
         if self.moduleConfig.range_test:
             p = admin_pb2.AdminMessage()
             p.set_module_config.range_test.CopyFrom(self.moduleConfig.range_test)
             self._sendAdmin(p)
             logging.debug("Wrote module: range_test")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.moduleConfig.telemetry:
             p = admin_pb2.AdminMessage()
             p.set_module_config.telemetry.CopyFrom(self.moduleConfig.telemetry)
             self._sendAdmin(p)
             logging.debug("Wrote module: telemetry")
-            time.sleep(0.1)
+            time.sleep(0.3)
 
         if self.moduleConfig.canned_message:
             p = admin_pb2.AdminMessage()
             p.set_module_config.canned_message.CopyFrom(self.moduleConfig.canned_message)
             self._sendAdmin(p)
             logging.debug("Wrote module: canned_message")
-            time.sleep(0.1)
+            time.sleep(0.3)
+
+    def writeConfig(self, config_name):
+        """Write the current (edited) localConfig to the device"""
+        if self.localConfig is None:
+            our_exit("Error: No localConfig has been read")
+
+        p = admin_pb2.AdminMessage()
+
+        if config_name == 'device':
+            p.set_config.device.CopyFrom(self.localConfig.device)
+        elif config_name == 'position':
+            p.set_config.position.CopyFrom(self.localConfig.position)
+        elif config_name == 'power':
+            p.set_config.power.CopyFrom(self.localConfig.power)
+        elif config_name == 'wifi':
+            p.set_config.wifi.CopyFrom(self.localConfig.wifi)
+        elif config_name == 'display':
+            p.set_config.display.CopyFrom(self.localConfig.display)
+        elif config_name == 'lora':
+            p.set_config.lora.CopyFrom(self.localConfig.lora)
+        elif config_name == 'mqtt':
+            p.set_module_config.mqtt.CopyFrom(self.moduleConfig.mqtt)
+        elif config_name == 'serial':
+            p.set_module_config.serial.CopyFrom(self.moduleConfig.serial)
+        elif config_name == 'external_notification':
+            p.set_module_config.external_notification.CopyFrom(self.moduleConfig.external_notification)
+        elif config_name == 'store_forward':
+            p.set_module_config.store_forward.CopyFrom(self.moduleConfig.store_forward)
+        elif config_name == 'range_test':
+            p.set_module_config.range_test.CopyFrom(self.moduleConfig.range_test)
+        elif config_name == 'telemetry':
+            p.set_module_config.telemetry.CopyFrom(self.moduleConfig.telemetry)
+        elif config_name == 'canned_message':
+            p.set_module_config.canned_message.CopyFrom(self.moduleConfig.canned_message)
+        else:
+            our_exit(f"Error: No valid config with name {config_name}")
+        
+        logging.debug(f"Wrote: {config_name}")
+        self._sendAdmin(p)
 
     def writeChannel(self, channelIndex, adminIndex=0):
         """Write the current (edited) channel to the device"""
@@ -502,6 +541,14 @@ class Node:
 
         return self._sendAdmin(p)
 
+    def getMetadata(self, secs: int = 10):
+        """Tell the node to shutdown."""
+        p = admin_pb2.AdminMessage()
+        p.get_device_metadata_request = True
+        logging.info(f"Requesting device metadata")
+
+        return self._sendAdmin(p, wantResponse=True, onResponse=self.onRequestGetMetadata)
+
     def _fixupChannels(self):
         """Fixup indexes and add disabled channels as needed"""
 
@@ -524,6 +571,15 @@ class Node:
             self.channels.append(ch)
             index += 1
 
+
+    def onRequestGetMetadata(self, p):
+        """Handle the response packet for requesting device metadata getMetadata()"""
+        logging.debug(f'onRequestGetMetadata() p:{p}')
+        c = p["decoded"]["admin"]["raw"].get_device_metadata_response
+        self._timeout.reset()  # We made foreward progress
+        logging.debug(f"Received metadata {stripnl(c)}")
+        print(f"\nfirmware_version: {c.firmware_version}")
+        print(f"device_state_version: {c.device_state_version}")
 
     def onResponseRequestChannel(self, p):
         """Handle the response packet for requesting a channel _requestChannel()"""
